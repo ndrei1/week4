@@ -1,5 +1,7 @@
 package patmat
 
+import scala.annotation.tailrec
+
 /**
  * A huffman code is represented by a binary tree.
  *
@@ -33,7 +35,7 @@ trait Huffman extends HuffmanInterface :
     case Leaf(char, weight) => List(char)
   }
 
-  def makeCodeTree(left: CodeTree, right: CodeTree) =
+  def makeCodeTree(left: CodeTree, right: CodeTree): Fork =
     Fork(left, right, chars(left) ::: chars(right), weight(left) + weight(right))
 
   // Part 2: Generating Huffman trees
@@ -73,6 +75,7 @@ trait Huffman extends HuffmanInterface :
    * }
    */
   def times(chars: List[Char]): List[(Char, Int)] = {
+    @tailrec
     def charCount(char: Char, chars: List[Char], acc: Int = 1): (Char, Int) = {
       if chars.isEmpty then (char, acc)
       else if char == chars.head then charCount(char, chars.tail, acc + 1)
@@ -80,14 +83,13 @@ trait Huffman extends HuffmanInterface :
     }
 
     def contains(a: List[(Char, Int)], b: Char): Boolean = {
-      if a.isEmpty then false
-      else if a.head._1 == b then true
-      else contains(a.tail, b)
+      a.exists(x => x._1 == b)
     }
 
+    @tailrec
     def timesAcc(chars: List[Char], pairs: List[(Char, Int)]): List[(Char, Int)] = {
       if chars.isEmpty then pairs
-      else if contains(pairs , charCount(chars.head, chars.tail)._1) then timesAcc(chars.tail, pairs)
+      else if pairs.exists(x => x._1 == charCount(chars.head, chars.tail)._1) then timesAcc(chars.tail, pairs)
       else timesAcc(chars.tail, pairs ::: List(charCount(chars.head, chars.tail)))
     }
 
@@ -170,30 +172,31 @@ trait Huffman extends HuffmanInterface :
    * the resulting list of characters.
    */
 
-  def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
-    tree match {
-      case fork: Fork =>
-        if bits.head == 0 then decode(fork.left, bits.tail)
-        else decode(fork.right, bits.tail)
-      case leaf: Leaf =>
-        val bity: List[Bit] = bits
-        leaf.char :: (if bits.isEmpty then Nil else decode(frenchCode, bits))
-    }
-  }
-
 //  def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
-//    def decodeAcc(currentTree: CodeTree, bits: List[Bit]): List[Char] = {
-//      currentTree match {
-//        case fork: Fork =>
-//          if bits.head == 0 then decode(fork.left, bits.tail)
-//          else decode(fork.right, bits.tail)
-//        case leaf: Leaf =>
-//          val bity: List[Bit] = bits
-//          leaf.char :: (if bits.isEmpty then Nil else decode(tree, bits))
-//      }
+//    tree match {
+//      case fork: Fork =>
+//        if bits.isEmpty then Nil else if bits.head == 0 then decode(fork.left, bits.tail)
+//        else decode(fork.right, bits.tail)
+//      case leaf: Leaf =>
+//        leaf.char :: decode(frenchCode, bits)
 //    }
-//    decodeAcc(tree, bits)
 //  }
+
+  def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
+
+    def decodeAcc(currentTree: CodeTree, bits: List[Bit]): List[Char] = {
+      currentTree match {
+        case fork: Fork =>
+          if bits.isEmpty then Nil
+          else if bits.head == 0 then decodeAcc(fork.left, bits.tail)
+          else decodeAcc(fork.right, bits.tail)
+        case leaf: Leaf =>
+          leaf.char :: (decodeAcc(tree, bits))
+      }
+    }
+
+    decodeAcc(tree, bits)
+  }
 
 
   /**
@@ -225,14 +228,13 @@ trait Huffman extends HuffmanInterface :
     def encodeSymbol(currentTree: CodeTree, c: Char): List[Bit] = currentTree match {
       case fork: Fork if chars(fork.left).contains(c) => List(0) ::: encodeSymbol(fork.left, c)
       case fork: Fork => List(1) ::: encodeSymbol(fork.right, c)
-      case leaf: Leaf => {
+      case leaf: Leaf =>
         encode(tree)(text.tail)
-      }
     }
-
-    if !text.isEmpty then
+    if text.nonEmpty then
       encodeSymbol(tree, text.head) else Nil
   }
+
   // Part 4b: Encoding using code table
 
   type CodeTable = List[(Char, List[Bit])]
@@ -242,7 +244,8 @@ trait Huffman extends HuffmanInterface :
    * the code table `table`.
    */
   def codeBits(table: CodeTable)(char: Char): List[Bit] = {
-    if table.head._1 == char then table.head._2
+    if table.isEmpty then Nil
+    else if table.head._1 == char then table.head._2
     else codeBits(table.tail)(char)
   }
 

@@ -35,8 +35,8 @@ class HuffmanSuite extends munit.FunSuite :
   }
 
   test("combine of some leaf list") {
-    val leaflist = List(Leaf('e', 1), Leaf('t', 2), Leaf('x', 4))
-    assertEquals(combine(leaflist), List(Fork(Leaf('e', 1), Leaf('t', 2), List('e', 't'), 3), Leaf('x', 4)))
+    val leafList = List(Leaf('e', 1), Leaf('t', 2), Leaf('x', 4))
+    assertEquals(combine(leafList), List(Fork(Leaf('e', 1), Leaf('t', 2), List('e', 't'), 3), Leaf('x', 4)))
   }
 
   test("until") {
@@ -44,10 +44,12 @@ class HuffmanSuite extends munit.FunSuite :
     val t2 = Fork(Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5), Leaf('d', 4), List('a', 'b', 'd'), 9)
     val lists: List[CodeTree] = List(t1) ::: List(t2) ::: List(frenchCode)
 
-    val listTree: List[CodeTree] = until(x => true, combine)(lists)
-    val listTree2: List[CodeTree] = until(x => false, x => (List(t2)))(lists)
+    val listTree: List[CodeTree] = until(x => singleton(lists), combine)(lists)
+    val listTree2: List[CodeTree] = until(x => x.equals(singleton(lists)), x => (List(t2)))(lists)
+
     val listTree3: List[CodeTree] = until(x => true, x => (List(t2)))(lists)
     val listTree4: List[CodeTree] = until(x => false, combine)(lists)
+
 
     assertEquals(listTree, listTree4)
     assertEquals(listTree2, listTree3)
@@ -66,23 +68,39 @@ class HuffmanSuite extends munit.FunSuite :
 
 
   test("combine of some leaf list (15pts)") {
-    val leaflist = List(Leaf('e', 1), Leaf('t', 2), Leaf('x', 4))
-    assertEquals(combine(leaflist), List(Fork(Leaf('e', 1), Leaf('t', 2), List('e', 't'), 3), Leaf('x', 4)))
+    val leafList = List(Leaf('e', 1), Leaf('t', 2), Leaf('x', 4))
+    assertEquals(combine(leafList), List(Fork(Leaf('e', 1), Leaf('t', 2), List('e', 't'), 3), Leaf('x', 4)))
   }
-  
-  test("secretSentance") {
+
+  test("secretSentence") {
     assertEquals(decodedSecret, List('h', 'u', 'f', 'f', 'm', 'a', 'n', 'e', 's', 't', 'c', 'o', 'o', 'l'))
   }
-  
+
   test("codeBits") {
     val tree = Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5)
+    val tree2 = Fork(Fork(Leaf('a', 2), Leaf('b', 3), List('a', 'b'), 5), Leaf('d', 4), List('a', 'b', 'd'), 9)
     val codeTable: CodeTable = convert(tree)
+    val codeTable2: CodeTable = convert(tree2)
+    assertEquals(codeBits(Nil)('d'), Nil)
+    assertEquals(codeBits(codeTable2)('a'), List(0, 0))
+    assertEquals(codeBits(codeTable2)('b'), List(0, 1))
     assertEquals(codeBits(codeTable)('a'), List(0))
     assertEquals(codeBits(codeTable)('b'), List(1))
   }
 
   test("encode using french code") {
     assertEquals(decode(frenchCode, encode(frenchCode)("huffmanestcool".toList)), "huffmanestcool".toList)
+  }
+
+  test("encode and decode") {
+    val a = "haiAndrei".toList
+    val en = encode(createCodeTree(a))(a)
+    val dec = decode(createCodeTree(a),en)
+    assertEquals(a,dec)
+    val b = "123".toList
+    val en1 = encode(createCodeTree(b))(b)
+    val dec1 = decode(createCodeTree(b),en1)
+    assertEquals(b,dec1)
   }
 
   test("encode and quickEncode same results") {
@@ -93,4 +111,4 @@ class HuffmanSuite extends munit.FunSuite :
 
   import scala.concurrent.duration.*
 
-  override val munitTimeout = 10.seconds
+  override val munitTimeout: FiniteDuration = 10.seconds
